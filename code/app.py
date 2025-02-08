@@ -750,46 +750,26 @@ def do_a2(path="../data/format.md"):
     print(path)
 
 def do_a3():
-    try:
-        # Read the dates file
-        dates = Path("../data/dates.txt").read_text()
-        
-        # Create task description
-        task_description = f"Count how many Wednesdays appear in this list of dates:\n{dates}"
-        
-        # Analyze task constraints first
-        constraints = analyze_task_constraints(task_description)
-        constraints_dict = json.loads(constraints)
-        if not constraints_dict.get("is_safe", False):
-            raise Exception(f"Task analysis failed: {constraints_dict.get('violations', [])}")
-            
-        # Parse the task to get analysis
-        task_analysis = get_task_analysis(task_description)
-        if isinstance(task_analysis, int):
-            raise Exception(f"Task analysis failed with status {task_analysis}")
-            
-        # Get the actual count using make_request
-        messages = [
-            {"role": "system", "content": "You are a date analysis assistant. Return ONLY the number of Wednesdays found in the dates list, with no additional text."},
-            {"role": "user", "content": task_description}
-        ]
-        
-        result = make_request({
-            "model": "gpt-4o-mini",
-            "messages": messages
-        }, 'chat')
-
-        if isinstance(result, int):
-            raise Exception(f"Date counting failed with status {result}")
-
-        # Extract just the number and write result
-        count = result.strip()
-        Path("/data/dates-wednesdays.txt").write_text(count)
-        return "do_a3 success"
-        
-    except Exception as e:
-        print(f"Error in do_a3: {str(e)}")
-        raise Exception(f"Error counting Wednesdays: {str(e)}")
+    count = 0
+    date_formats = [
+        "%Y/%m/%d %H:%M:%S", # 2017/01/31 23:59:59
+        "%Y-%m-%d", # 2017-01-31
+        "%d-%b-%Y", # 31-Jan-2017
+        "%b %d, %Y", # Jan-31-2017
+    ]
+    with open("../data/dates.txt") as f:
+        for i in f:
+            date = i.strip()
+            if date:
+                for format in date_formats:
+                    try:
+                        date_obj = datetime.strptime(date, format)
+                        if date_obj.weekday() == 2:
+                            count += 1
+                    except ValueError:
+                        continue
+    with open("../data/dates-wednesdays.txt", "w") as f:
+        f.write(str(count))
 def do_a4():
     def contact_sort_key(contact):
         return (contact["last_name"].lower(), contact["first_name"].lower())  # Case-insensitive sort
