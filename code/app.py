@@ -820,31 +820,31 @@ def do_a7():
     return "do_a7 success"
 
 def do_a8():
-    result = process_image("/data/credit-card.png")
+    result = process_image ("../data/credit-card.png")
     if isinstance(result, int):
         raise Exception(f"Image processing failed with status {result}")
 
     card_number = ''.join(c for c in result if c.isdigit())
-    Path("/data/credit-card.txt").write_text(card_number)
+    Path("../data/credit-card.txt").write_text(card_number)
     return "do_a8 success"
 
 def do_a9():
-    comments = Path("/data/comments.txt").read_text().splitlines()
+    comments = Path("../data/comments.txt").read_text().splitlines()
     similar_pair = find_similar_texts(comments)
 
     if isinstance(similar_pair, int):
         raise Exception(f"Finding similar texts failed with status {similar_pair}")
 
     idx1, idx2, _ = similar_pair
-    Path("/data/comments-similar.txt").write_text(f"{comments[idx1]}\n{comments[idx2]}")
+    Path("../data/comments-similar.txt").write_text(f"{comments[idx1]}\n{comments[idx2]}")
     return "do_a9 success"
 
 def do_a10():
-    with sqlite3.connect("/data/ticket-sales.db") as conn:
+    with sqlite3.connect("../data/ticket-sales.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT SUM(units * price) FROM tickets WHERE type = 'Gold'")
         total_sales = cursor.fetchone()[0]
-        Path("/data/ticket-sales-gold.txt").write_text(str(total_sales))
+        Path("../data/ticket-sales-gold.txt").write_text(str(total_sales))
     return "do_a10 success"
 
 
