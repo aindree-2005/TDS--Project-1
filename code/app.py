@@ -780,15 +780,15 @@ def do_a4():
     return "do_a4 success"
 
 def do_a5():
-    log_dir = Path("/data/logs")
+    log_dir = Path("../data/logs")
     log_files = sorted(log_dir.glob("*.log"), key=lambda x: x.stat().st_mtime, reverse=True)[:10]
     first_lines = [log.read_text().splitlines()[0] for log in log_files]
-    Path("/data/logs-recent.txt").write_text("\n".join(first_lines))
+    Path("../data/logs-recent.txt").write_text("\n".join(first_lines))
     return "do_a5 success"
 
 def do_a6():
     index = {}
-    docs_dir = Path("/data/docs")
+    docs_dir = Path("../data/docs")
 
     for md_file in docs_dir.rglob("*.md"):
         relative_path = str(md_file.relative_to(docs_dir))
@@ -798,7 +798,7 @@ def do_a6():
                 index[relative_path] = line.lstrip("# ").strip()
                 break
 
-    Path("/data/docs/index.json").write_text(json.dumps(index, indent=2))
+    Path("../data/docs/index.json").write_text(json.dumps(index, indent=2))
     return "do_a6 success"
 
 def do_a7():
