@@ -802,7 +802,7 @@ def do_a6():
     return "do_a6 success"
 
 def do_a7():
-    email_content = Path("/data/email.txt").read_text()
+    email_content = Path("../data/email.txt").read_text()
     messages = [
         {"role": "system", "content": "Extract only the sender's email address from the email content."},
         {"role": "user", "content": email_content}
@@ -816,7 +816,7 @@ def do_a7():
     if isinstance(result, int):
         raise Exception(f"Email extraction failed with status {result}")
 
-    Path("/data/email-sender.txt").write_text(result.strip())
+    Path("../data/email-sender.txt").write_text(result.strip())
     return "do_a7 success"
 
 def do_a8():
