@@ -774,9 +774,9 @@ def do_a4():
     def contact_sort_key(contact):
         return (contact["last_name"].lower(), contact["first_name"].lower())  # Case-insensitive sort
 
-    contacts = json.loads(Path("/data/contacts.json").read_text())
+    contacts = json.loads(Path("../data/contacts.json").read_text())
     sorted_contacts = sorted(contacts, key=contact_sort_key)
-    Path("/data/contacts-sorted.json").write_text(json.dumps(sorted_contacts, indent=2))
+    Path("../data/contacts-sorted.json").write_text(json.dumps(sorted_contacts, indent=2))
     return "do_a4 success"
 
 def do_a5():
