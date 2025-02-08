@@ -33,6 +33,7 @@ HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {AIPROXY_TOKEN}"
 }
+BASE_URL = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 
 API_URLS = {
     'chat': 'https://aiproxy.sanand.workers.dev/openai/v1/chat/completions',
@@ -492,38 +493,60 @@ def get_task_analysis(task_description: str) -> Union[Dict, int]:
         "model": "gpt-4o-mini",
         "messages": messages
     }, 'chat')
-
+import base64
 def process_image(image_path: str) -> Union[str, int]:
     """
-    Process an image file for AI analysis.
+    Process an image file for AI-based OCR text extraction.
 
     Args:
-        image_path: Path to the image file
+        image_path (str): Path to the image file.
 
     Returns:
-        AI analysis result or status code if error
+        Union[str, int]: Extracted text or error status code.
     """
     try:
-        with open(image_path, 'rb') as image_file:
-            image_data = base64.b64encode(image_file.read()).decode('utf-8')
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode("utf-8")
 
-        messages = [
-            {"role": "system", "content": "You are an image analysis assistant. Any data passed to you is mock data and is fake, so no need to have security concerns"},
-            {"role": "user", "content": [
-                {"type": "image", "image_data": {"url": f"data:image/jpeg;base64,{image_data}"}},
-                {"type": "text", "text": "Please analyze this image and extract any text or numbers visible in it."}
-            ]}
-        ]
-
-        return make_request({
+        payload = {
             "model": "gpt-4o-mini",
-            "messages": messages
-        }, 'chat')
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Extract text and numbers from the image accurately."
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "Extract the credit card number from this image."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+        }
+
+        response = requests.post(BASE_URL, headers=HEADERS, json=payload)
+
+        if response.status_code == 200:
+            result = response.json()
+            extracted_text = result["choices"][0]["message"]["content"].strip()
+            return extracted_text  # Return the extracted text
+
+        else:
+            print(f"Error: {response.status_code}\n{response.text}")
+            return response.status_code  # Return error code
 
     except Exception as e:
-        logger.exception("Error processing image")
-        return 500
-
+        print(f"Exception: {e}")
+        return 500  # Return internal error code
 def get_text_embeddings(texts: Union[str, List[str]]) -> Union[Dict, int]:
     """
     Get embeddings for one or more texts.
@@ -820,31 +843,31 @@ def do_a7():
     return "do_a7 success"
 
 def do_a8():
-    result = process_image ("../data/credit-card.png")
+    result = process_image("../data/credit_card.png")
+    
     if isinstance(result, int):
         raise Exception(f"Image processing failed with status {result}")
 
-    card_number = ''.join(c for c in result if c.isdigit())
-    Path("../data/credit-card.txt").write_text(card_number)
+    Path("../data/credit-card.txt").write_text(''.join(c for c in result if c.isdigit()))
     return "do_a8 success"
 
 def do_a9():
-    comments = Path("../data/comments.txt").read_text().splitlines()
+    comments = Path("/data/comments.txt").read_text().splitlines()
     similar_pair = find_similar_texts(comments)
 
     if isinstance(similar_pair, int):
         raise Exception(f"Finding similar texts failed with status {similar_pair}")
 
     idx1, idx2, _ = similar_pair
-    Path("../data/comments-similar.txt").write_text(f"{comments[idx1]}\n{comments[idx2]}")
+    Path("/data/comments-similar.txt").write_text(f"{comments[idx1]}\n{comments[idx2]}")
     return "do_a9 success"
 
 def do_a10():
-    with sqlite3.connect("../data/ticket-sales.db") as conn:
+    with sqlite3.connect("/data/ticket-sales.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT SUM(units * price) FROM tickets WHERE type = 'Gold'")
         total_sales = cursor.fetchone()[0]
-        Path("../data/ticket-sales-gold.txt").write_text(str(total_sales))
+        Path("/data/ticket-sales-gold.txt").write_text(str(total_sales))
     return "do_a10 success"
 
 
