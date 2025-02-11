@@ -47,6 +47,8 @@ TASK_FUNCTIONS = {
     "calculate gold ticket sales": "do_a10"
 }
 
+# Configuration: Root directory for data files
+DATA_ROOT = Path(os.getenv("DATA_ROOT", "/data"))  # Default to /data if not set
 
 def make_request(payload: Dict[str, Any], endpoint_type: str) -> Union[str, Dict, int]:
     """Make a request to the AI Proxy service"""
@@ -106,18 +108,23 @@ def do_a1(email: str):
 
 def do_a2():
     """Format markdown using prettier"""
-    subprocess.Popen(["prettier", "C:/data/format.md", "--write", "--parser", "markdown"],)
+    format_md_path = DATA_ROOT / "format.md"
+    subprocess.Popen(["prettier", str(format_md_path), "--write", "--parser", "markdown"])
     print("data formatted successfully")
 
 def do_a3():
+    """Count Wednesdays from dates in a file"""
     count = 0
     date_formats = [
-        "%Y/%m/%d %H:%M:%S", # 2017/01/31 23:59:59
-        "%Y-%m-%d", # 2017-01-31
-        "%d-%b-%Y", # 31-Jan-2017
-        "%b %d, %Y", # Jan-31-2017
+        "%Y/%m/%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%d-%b-%Y",
+        "%b %d, %Y",
     ]
-    with open("C:/data/dates.txt") as f:
+    dates_file_path = DATA_ROOT / "dates.txt"
+    wednesdays_file_path = DATA_ROOT / "dates-wednesdays.txt"
+
+    with open(dates_file_path, "r") as f:
         for i in f:
             date = i.strip()
             if date:
@@ -128,21 +135,26 @@ def do_a3():
                             count += 1
                     except ValueError:
                         continue
-    with open("C:/data/dates-wednesdays.txt", "w") as f:
+
+    with open(wednesdays_file_path, "w") as f:
         f.write(str(count))
 
 def do_a4():
     """Sort contacts by name"""
-    with open("C:/data/contacts.json", "r") as f:
+    contacts_file_path = DATA_ROOT / "contacts.json"
+    contacts_sorted_file_path = DATA_ROOT / "contacts-sorted.json"
+
+    with open(contacts_file_path, "r") as f:
         contacts = json.load(f)
         sorted_contacts = sorted(contacts, key=lambda x: (x["last_name"], x["first_name"]))
-    with open("C:/data/contacts-sorted.json", "w") as f:
+
+    with open(contacts_sorted_file_path, "w") as f:
         json.dump(sorted_contacts, f)
 
 def do_a5():
     """Get recent log files"""
     try:
-        log_dir = Path("C:/data/logs")
+        log_dir = DATA_ROOT / "logs"
 
         if not log_dir.exists() or not log_dir.is_dir():
             raise Exception("Logs directory not found!")
@@ -157,8 +169,8 @@ def do_a5():
                 except Exception as e:
                     first_lines.append(f"Error reading {log_file.name}: {str(e)}")
 
-        output_file = "C:/data/logs-recent.txt"
-        with open(output_file, "w") as f:
+        output_file_path = DATA_ROOT / "logs-recent.txt"
+        with open(output_file_path, "w") as f:
             f.write("\n".join(first_lines))
 
     except Exception as e:
@@ -166,48 +178,30 @@ def do_a5():
 
 def do_a6():
     """Create markdown index"""
-    try:
-        docs_dir = Path("C:/data/docs")
+    index = {}
+    docs_dir = DATA_ROOT / "docs"
+    index_file_path = DATA_ROOT / "docs/index.json"
 
-        if not docs_dir.exists() or not docs_dir.is_dir():
-            raise Exception("Docs directory not found!")
-
-        index = {}
-
-        for md_file in docs_dir.rglob("*.md"):
-            try:
-                relative_path = str(md_file.relative_to(docs_dir))
-                content = md_file.read_text(encoding='utf-8').splitlines()
-                title = None
-
-                for line in content:
-                    if line.startswith("# "):
-                        title = line[2:].strip()
-                        break
-
-                if title:
-                    index[relative_path] = title
-
-            except Exception as e:
-                print(f"Error processing {md_file}: {e}")
-
-        index_file = Path("C:/data/docs/index.json")
-        with open(index_file, "w", encoding='utf-8') as f:
-            json.dump(index, f, indent=2, ensure_ascii=False)
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    for md_file in docs_dir.rglob("*.md"):
+        relative_path = str(md_file.relative_to(docs_dir))
+        content = md_file.read_text().splitlines()
+        for line in content:
+            if line.startswith("# "):
+                index[relative_path] = line.lstrip("# ").strip()
+                break
+    index_file_path.write_text(json.dumps(index, indent=2))
+    return "do_a6 success"
 
 def do_a7():
     """Extract email sender"""
     try:
-        email_file = Path("C:/data/email.txt")
-        output_file = Path("C:/data/email-sender.txt")
+        email_file_path = DATA_ROOT / "email.txt"
+        email_sender_file_path = DATA_ROOT / "email-sender.txt"
 
-        if not email_file.exists() or not email_file.is_file():
+        if not email_file_path.exists() or not email_file_path.is_file():
             raise Exception("Email file not found!")
 
-        email_content = email_file.read_text(encoding='utf-8')
+        email_content = email_file_path.read_text(encoding='utf-8')
 
         messages = [
             {"role": "system", "content": "Extract only the sender's email address from the email content."},
@@ -222,7 +216,7 @@ def do_a7():
         if isinstance(result, int):
             raise Exception(f"LLM request failed with status code {result}")
 
-        output_file.write_text(result.strip(), encoding='utf-8')
+        email_sender_file_path.write_text(result.strip(), encoding='utf-8')
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -230,23 +224,19 @@ def do_a7():
 def do_a8():
     """Extract credit card number"""
     try:
-        # Use C:/data path
-        image_file = Path("C:/data/credit_card.png")
-        output_file = Path("C:/data/credit-card.txt")
+        image_file_path = DATA_ROOT / "credit_card.png"
+        output_file_path = DATA_ROOT / "credit-card.txt"
 
-        # Verify image file exists
-        if not image_file.exists() or not image_file.is_file():
+        if not image_file_path.exists() or not image_file_path.is_file():
             raise Exception("Credit card image not found!")
 
-        # Convert image to base64
-        with open(image_file, 'rb') as image_file:
+        with open(image_file_path, 'rb') as image_file:
             image_data = base64.b64encode(image_file.read()).decode('utf-8')
 
-        # Make request to LLM
         messages = [
             {"role": "system", "content": """You are a specialized credit card number extractor. 
             Focus ONLY on finding and extracting the 16-digit credit card number from the image.
-            Return ONLY the 16 digits with no spaces or separators."""},
+            Return ONLY the 16 digits with no spaces or separators. Please try to differentiate between 3 and 5 clearly, don't accidentally swap them"""},
             {"role": "user", "content": [
                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{image_data}"}},
                 {"type": "text", "text": "Extract only the 16-digit credit card number from this image."}
@@ -261,13 +251,11 @@ def do_a8():
         if isinstance(result, int):
             raise Exception(f"LLM request failed with status code {result}")
 
-        # Extract and validate card number
         card_number = ''.join(c for c in result if c.isdigit())
         if len(card_number) != 16:
             raise Exception(f"Extracted card number is not 16 digits long: {card_number}")
 
-        # Write result to file
-        output_file.write_text(card_number, encoding='utf-8')
+        output_file_path.write_text(card_number, encoding='utf-8')
 
     except Exception as e:
         print(f"An error occurred: {e}")
@@ -275,27 +263,22 @@ def do_a8():
 def do_a9():
     """Find similar comments"""
     try:
-        # Define file paths
-        comments_file = Path("C:/data/comments.txt")
-        output_file = Path("C:/data/comments-similar.txt")
+        comments_file_path = DATA_ROOT / "comments.txt"
+        comments_similar_file_path = DATA_ROOT / "comments-similar.txt"
 
-        # Verify comments file exists
-        if not comments_file.exists() or not comments_file.is_file():
+        if not comments_file_path.exists() or not comments_file_path.is_file():
             raise Exception("Comments file not found!")
 
-        # Read comments
-        comments = comments_file.read_text(encoding='utf-8').splitlines()
+        comments = comments_file_path.read_text(encoding='utf-8').splitlines()
         if len(comments) < 2:
             raise Exception("Not enough comments to find similarity!")
 
-        # Get embeddings
         embeddings_response = get_text_embeddings(comments)
         if isinstance(embeddings_response, int):
             raise Exception(f"Embedding request failed with status code {embeddings_response}")
 
         embeddings = [data['embedding'] for data in embeddings_response['data']]
 
-        # Find most similar comments
         max_similarity = -1
         most_similar_pair = (0, 1)
         for i in range(len(comments)):
@@ -305,8 +288,7 @@ def do_a9():
                     max_similarity = similarity
                     most_similar_pair = (i, j)
 
-        # Write most similar comments to file
-        with open(output_file, "w", encoding='utf-8') as f:
+        with open(comments_similar_file_path, "w", encoding='utf-8') as f:
             f.write(comments[most_similar_pair[0]] + "\n")
             f.write(comments[most_similar_pair[1]] + "\n")
 
@@ -316,18 +298,15 @@ def do_a9():
 def do_a10():
     """Calculate gold ticket sales"""
     try:
-        # Define file paths
-        db_file = Path("C:/data/ticket-sales.db")
-        output_file = Path("C:/data/ticket-sales-gold.txt")
+        db_file_path = DATA_ROOT / "ticket-sales.db"
+        output_file_path = DATA_ROOT / "ticket-sales-gold.txt"
 
-        # Verify database file exists
-        if not db_file.exists() or not db_file.is_file():
+        if not db_file_path.exists() or not db_file_path.is_file():
             raise Exception("Database file not found!")
 
-        # Calculate total sales
         conn = None
         try:
-            conn = sqlite3.connect(str(db_file))
+            conn = sqlite3.connect(str(db_file_path))
             cursor = conn.cursor()
             cursor.execute("SELECT SUM(units * price) FROM tickets WHERE type = 'Gold'")
             total_sales = cursor.fetchone()[0]
@@ -337,11 +316,10 @@ def do_a10():
             if conn:
                 conn.close()
 
-        # Write total sales to file
         if total_sales is not None:
-            output_file.write_text(str(total_sales), encoding='utf-8')
+            output_file_path.write_text(str(total_sales), encoding='utf-8')
         else:
-            output_file.write_text("0", encoding='utf-8')
+            output_file_path.write_text("0", encoding='utf-8')
 
     except Exception as e:
         print(f"An error occurred: {e}")
