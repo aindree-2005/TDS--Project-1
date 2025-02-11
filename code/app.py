@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, UploadFile, File, Form
 from pathlib import Path
 import subprocess
 import json
@@ -9,14 +9,15 @@ import logging
 import requests
 from typing import Dict, Union, Any, List, Optional
 import base64
-from pathlib import Path
-import json
 import re
 import shutil
-
+from PIL import Image
+import markdown
+import io
+import os
 app = FastAPI()
 TASK_FUNCTIONS = {
-    "generate data": "do_a1",  # CORRECTED
+    "generate data": "do_a1",  
     "format markdown": "do_a2",
     "count wednesdays": "do_a3",
     "sort contacts": "do_a4",
@@ -25,7 +26,16 @@ TASK_FUNCTIONS = {
     "extract email sender": "do_a7",
     "extract credit card number": "do_a8",
     "find similar comments": "do_a9",
-    "calculate gold ticket sales": "do_a10"
+    "calculate gold ticket sales": "do_a10",
+    "don't delete data":"do_b2",
+    "Fetch data from an API and save it":"do_b3",
+    "clone github repo and make commit":"do_b4",
+    "Extract data from (i.e. scrape) a website":"do_b6",
+    " Run a SQL query on a SQLite or DuckDB database":"do_b5",
+    "compress image": "do_b7",
+    "transcribe audio": "do_b8",
+    "convert markdown": "do_b9",
+    "filter csv and return json":"do_b10"
 }
 
 AIPROXY_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDA5ODNAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.LMIj06L44DC3uMCLjw6Of0aLyMlDEHKAGYLLZ86g8_8"
@@ -68,10 +78,6 @@ def get_task_analysis(task_description: str) -> Union[Dict, int]:
 def process_image(image_path: str) -> Union[str, int]:
     """
     Process an image file for AI analysis.
-
-    Args:
-        image_path: Path to the image file
-
     Returns:
         AI analysis result or status code if error
     """
@@ -99,12 +105,6 @@ def process_image(image_path: str) -> Union[str, int]:
 def get_text_embeddings(texts: Union[str, List[str]]) -> Union[Dict, int]:
     """
     Get embeddings for one or more texts.
-
-    Args:
-        texts: Single text string or list of strings
-
-    Returns:
-        Embeddings response or status code if error
     """
     if isinstance(texts, str):
         texts = [texts]
@@ -115,15 +115,6 @@ def get_text_embeddings(texts: Union[str, List[str]]) -> Union[Dict, int]:
     }, 'embeddings')
 
 def find_similar_texts(texts: List[str]) -> Union[tuple, int]:
-    """
-    Find the most similar pair of texts in a list.
-
-    Args:
-        texts: List of text strings to compare
-
-    Returns:
-        Tuple of (index1, index2, similarity_score) or status code if error
-    """
     try:
         embeddings_response = get_text_embeddings(texts)
         if isinstance(embeddings_response, int):
@@ -182,17 +173,9 @@ def make_request(payload: Dict[str, Any], endpoint_type: str) -> Union[str, Dict
 def validate_file_access(file_path: str) -> bool:
     """
     Validate if a file path is within the allowed /data directory.
-
-    Args:
-        file_path: Path to validate
-
-    Returns:
-        True if path is valid, False otherwise
     """
     try:
-        # Convert to absolute path and resolve any symlinks
         abs_path = Path(file_path).resolve()
-        # Check if the path starts with /data
         return str(abs_path).startswith('/data')
     except Exception:
         return False
@@ -423,18 +406,11 @@ def do_a8():
 
         if isinstance(result, int):
             raise Exception(f"Image processing failed with status code {result}")
-
-        # Clean and validate the extracted number
         card_number = ''.join(c for c in result if c.isdigit())
-        
-        # Validate we got exactly 16 digits
         if len(card_number) != 16:
             raise ValueError(f"Expected 16 digits but got {len(card_number)} digits")
-
-        # Write result to file
         output_path.write_text(card_number)
         return "do_a8 success"
-        
     except FileNotFoundError as e:
         print(f"File error: {str(e)}")
         raise
@@ -447,10 +423,8 @@ def do_a8():
 def do_a9():
     comments = Path("../data/comments.txt").read_text().splitlines()
     similar_pair = find_similar_texts(comments)
-
     if isinstance(similar_pair, int):
         raise Exception(f"Finding similar texts failed with status {similar_pair}")
-
     idx1, idx2, _ = similar_pair
     Path("../data/comments-similar.txt").write_text(f"{comments[idx1]}\n{comments[idx2]}")
     return "do_a9 success"
@@ -463,17 +437,66 @@ def do_a10():
         Path("../data/ticket-sales-gold.txt").write_text(str(total_sales))
     return "do_a10 success"
 
+#Slot B tasks
+def do_b2():
+    return True
+def do_b3():
+    return True
+def do_b4(repo_url: str, commit_message: str, local_path: str):
+    """
+    Clone a GitHub repository, make a commit, and push changes.
 
+    Args:
+        repo_url (str): GitHub repository URL.
+        commit_message (str): Commit message.
+        local_path (str): Path to clone the repo.
+
+    Returns:
+        bool: True if successful, False otherwise.
+    """
+    try:
+        if not os.path.exists(local_path):
+            subprocess.run(["git", "clone", repo_url, local_path], check=True)
+        subprocess.run(["git", "-C", local_path, "add", "."], check=True)
+        subprocess.run(["git", "-C", local_path, "commit", "-m", commit_message], check=True)
+        subprocess.run(["git", "-C", local_path, "push"], check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        return False
+
+
+import duckdb
+def do_b5(db_path: str, query: str):
+    try:
+        if db_path.endswith(".db"):
+            conn = sqlite3.connect(db_path)
+        else:
+            conn = duckdb.connect(database=db_path, read_only=False)
+        
+        cursor = conn.cursor()
+        cursor.execute(query)
+        results = cursor.fetchall()
+        conn.close()
+        return results
+    except Exception as e:
+        logger.exception("SQL query execution failed")
+        return []
+def do_b6():
+    return True
+def do_b7():
+    return True
+def do_b8():
+    return True
+def do_b9():
+    return True
+def do_b10():
+    return True
 # API Endpoints
 @app.post("/run")
 def run_task(
     task: str = Query(..., description="Task description"),
     email: Optional[str] = Query(None, description="User email (required only for generate data task)")
 ):
-    """
-    Executes the given task based on natural language input.
-    Email is only required for the 'generate data' task.
-    """
     task = task.lower()
     if task in TASK_FUNCTIONS:
         func_name = TASK_FUNCTIONS[task]
