@@ -23,7 +23,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger("TaskAIProxy")
-AIPROXY_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDA5ODNAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.LMIj06L44DC3uMCLjw6Of0aLyMlDEHKAGYLLZ86g8_8"
+AIPROXY_TOKEN = os.environ.get("AIPROXY_TOKEN")
 HEADERS = {
     "Content-Type": "application/json",
     "Authorization": f"Bearer {AIPROXY_TOKEN}"

@@ -1,13 +1,3 @@
-# /// script
-# requires-python = ">=3.13"
-# dependencies = [
-#     "faker",
-#     "httpx",
-#     "numpy",
-#     "pillow",
-#     "python-dateutil",
-# ]
-# ///
 import hashlib
 import httpx
 import json
@@ -30,10 +20,8 @@ from datagen import (
 )
 
 
-openai_api_base = os.getenv(
-    "OPENAI_API_BASE", "https://aiproxy.sanand.workers.dev/openai/v1"
-)
-openai_api_key = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDA5ODNAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.LMIj06L44DC3uMCLjw6Of0aLyMlDEHKAGYLLZ86g8_8"
+openai_api_base = os.getenv("OPENAI_API_BASE", "https://aiproxy.sanand.workers.dev/openai/v1")
+openai_api_key = os.getenv("OPENAI_API_KEY")
 
 
 def num(str):
@@ -211,9 +199,7 @@ async def a9(email, **kwargs):
         "`/data/comments.txt` contains a list of comments, one per line. Using embeddings, find the most similar pair of comments and write them to `/data/comments-similar.txt`, one per line"
     )
     result = await read("/data/comments-similar.txt")
-    sorted_result = "\n".join(
-        sorted([line for line in result.split("\n") if line.strip()])
-    )
+    sorted_result = "\n".join(sorted([line for line in result.split("\n") if line.strip()]))
     if sorted_result != expected:
         return mismatch("/data/comments-similar.txt", expected, result)
     return True
@@ -229,9 +215,7 @@ async def a10(email, **kwargs):
     try:
         result = float(result)
     except ValueError:
-        logging.error(
-            f"🔴 /data/ticket-sales-gold.txt was {result}, not a valid number"
-        )
+        logging.error(f"🔴 /data/ticket-sales-gold.txt was {result}, not a valid number")
         return False
     if abs(result - expected) > 0.1:
         return mismatch("/data/ticket-sales-gold.txt", expected, result)
@@ -259,16 +243,10 @@ if __name__ == "__main__":
     import asyncio
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description="Evaluate tasks with configurable logging"
-    )
-    parser.add_argument(
-        "--email", default="user@example.com", help="Set the email address"
-    )
+    parser = argparse.ArgumentParser(description="Evaluate tasks with configurable logging")
+    parser.add_argument("--email", default="user@example.com", help="Set the email address")
     levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
-    parser.add_argument(
-        "--log-level", default="INFO", choices=levels, help="Set logging level"
-    )
+    parser.add_argument("--log-level", default="INFO", choices=levels, help="Set logging level")
     args = parser.parse_args()
     logging.basicConfig(level=args.log_level, format="%(message)s\n")
     asyncio.run(main(args.email))
